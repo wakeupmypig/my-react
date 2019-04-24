@@ -11,10 +11,37 @@ class ReactTextUnit extends Unit{ // 默认不调用super  也是调用了super
         return `<span data-reactid="${rootId}">${this._currentElement}</span>`;
     }
 }
+class ReactNativeUnit extends Unit{
+    getMarkUp(rootId){
+        this.rootId = rootId;
+        // react源码 用的是字符串拼接
+        let {props,type} = this._currentElement;
+        let tagStart = `<${type} data-reactid="${rootId}"`;
+        let contentString = '';
+        let tagEnd = `</${type}>`;
+        for(let keyProp in props){
+            if(keyProp === 'children'){
+                // child 可能是 字符串  可能是一个对象
+                contentString = props[keyProp].map((child,idx)=>{
+                    // 递归的获取 儿子对应的字符串结果
+                    let childInstance = createReactUnit(child);
+                    return childInstance.getMarkUp(`${rootId}.${idx}`);
+                }).join('');
+            }else{
+                tagStart += (` ${keyProp}=${props[keyProp]}`)
+            }
+        }
+        return tagStart + '>' + contentString + tagEnd;
+    }
+}
 function createReactUnit(element){
-    // 不同的
+    // 识别字符串或者数字
     if(typeof element == 'string' || typeof element === 'number'){
         return new ReactTextUnit(element);
+    }
+    // 判断当前元素 是一个普通的jsx元素
+    if(typeof element === 'object' && typeof element.type === 'string'){
+        return new ReactNativeUnit(element);
     }
 }
 export default createReactUnit
